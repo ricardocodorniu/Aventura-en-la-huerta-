@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aventura Matemática Murciana - 4º Primaria</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka+One&family=Nunito:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nunito', sans-serif;
+            background-color: #f0fdf4; /* Tono verde huerta suave */
+            background-image: url('data:image/svg+xml,%3Csvg width="60" height="60" viewBox="0 0 60 60" xmlns="http://www.w3.org/2000/svg"%3E%3Cg fill="none" fill-rule="evenodd"%3E%3Cg fill="%2322c55e" fill-opacity="0.1"%3E%3Cpath d="M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E');
+        }
+        h1, h2, h3, .btn-text {
+            font-family: 'Fredoka One', cursive;
+        }
+        .game-container {
+            max-width: 800px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .screen {
+            display: none;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .screen.active {
+            display: flex;
+            flex-direction: column;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .btn {
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+        .btn:active {
+            transform: translateY(1px);
+        }
+        .feedback-correct { color: #16a34a; font-weight: bold; }
+        .feedback-incorrect { color: #dc2626; font-weight: bold; }
+        
+        /* Gráfica simple con CSS */
+        .chart-container {
+            display: flex;
+            align-items: flex-end;
+            height: 200px;
+            gap: 20px;
+            padding: 20px 0;
+            border-bottom: 2px solid #cbd5e1;
+            border-left: 2px solid #cbd5e1;
+            margin: 20px;
+        }
+        .bar-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+        }
+        .bar {
+            width: 40px;
+            background: linear-gradient(to top, #3b82f6, #60a5fa);
+            border-radius: 4px 4px 0 0;
+            transition: height 0.3s;
+        }
+        .bar-label {
+            margin-top: 8px;
+            font-size: 0.875rem;
+            text-align: center;
+            font-weight: bold;
+        }
+        .bar-value {
+            margin-bottom: 4px;
+            font-size: 0.875rem;
+            color: #475569;
+        }
+
+        /* Dibujo geométrico */
+        canvas {
+            border: 2px dashed #94a3b8;
+            border-radius: 8px;
+            background-color: white;
+            cursor: crosshair;
+        }
+    </style>
+</head>
+<body class="text-slate-800">
+
+<div class="game-container p-4">
+    
+    <!-- Pantalla de Inicio -->
+    <div id="start-screen" class="screen active justify-center items-center flex-1 text-center">
+        <div class="bg-white p-8 rounded-2xl shadow-xl border-4 border-green-500 max-w-lg w-full">
+            <h1 class="text-4xl text-green-600 mb-4">Aventura Matemática Murciana</h1>
+            <p class="text-lg mb-6">¡Acho! Bienvenido a un viaje por la Región de Murcia. Para avanzar por nuestra tierra, tendrás que resolver retos matemáticos. ¿Preparado?</p>
+            <div class="flex justify-center mb-6 text-6xl">🍋 🌊 🏰</div>
+            <button onclick="startGame()" class="btn bg-green-500 hover:bg-green-600 text-white font-bold py-3 px-8 rounded-full text-xl btn-text w-full">¡Empezar Viaje!</button>
+        </div>
+    </div>
+
+    <!-- Pantalla de Juego -->
+    <div id="game-screen" class="screen flex-1">
+        <!-- Header: Progreso y Puntuación -->
+        <div class="flex justify-between items-center bg-white p-4 rounded-xl shadow-md mb-6 border-2 border-green-200">
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">🗺️</span>
+                <span id="level-indicator" class="font-bold text-green-700">Lugar: La Huerta</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="text-2xl">🏆</span>
+                <span id="score-indicator" class="font-bold text-blue-600">Puntos: 0</span>
+            </div>
+        </div>
+
+        <!-- Contenedor del Nivel -->
+        <div class="bg-white p-6 md:p-8 rounded-2xl shadow-lg border-2 border-slate-200 flex-1 flex flex-col">
+            <div id="level-context" class="mb-6 pb-4 border-b-2 border-slate-100 text-lg text-slate-600 italic">
+                Contexto del nivel
+            </div>
+            
+            <h2 id="question-text" class="text-2xl text-slate-800 mb-6 font-bold text-center">Pregunta aquí</h2>
+            
+            <!-- Contenedor interactivo (cambiará según el tipo de pregunta) -->
+            <div id="interactive-area" class="flex-1 flex flex-col justify-center items-center mb-6 w-full">
+                <!-- Aquí van los botones de opciones, inputs, gráficas o canvas -->
+            </div>
+
+            <!-- Feedback -->
+            <div id="feedback-area" class="text-center h-12 flex items-center justify-center text-lg mb-4"></div>
+
+            <button id="next-btn" onclick="nextQuestion()" class="btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-6 rounded-xl text-lg hidden self-end mt-auto">Siguiente Reto ➡️</button>
+        </div>
+    </div>
+
+    <!-- Pantalla Final -->
+    <div id="end-screen" class="screen justify-center items-center flex-1 text-center">
+        <div class="bg-white p-8 rounded-2xl shadow-xl border-4 border-blue-500 max-w-lg w-full">
+            <h1 class="text-4xl text-blue-600 mb-4">¡Enhorabuena!</h1>
+            <p class="text-lg mb-4">Has recorrido toda la Región de Murcia resolviendo problemas estupendamente.</p>
+            <div class="text-6xl mb-4">🎉 🥇 🍋</div>
+            <p class="text-xl font-bold mb-6">Puntuación Final: <span id="final-score" class="text-green-600">0</span></p>
+            <button onclick="resetGame()" class="btn bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-8 rounded-full text-xl btn-text w-full">Jugar de nuevo</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Base de datos de preguntas
+    const levels = [
+        {
+            location: "Huerta de Murcia",
+            context: "Estamos recogiendo limones en la huerta. El abuelo nos dice la cantidad que hemos recogido hoy.",
+            type: "text_number",
+            question: "¿Cómo se escribe en cifras: 'Doce mil trescientos cuarenta y cinco'?",
+            correctAnswer: "12345",
+            options: ["12354", "12345", "12000345", "102345"]
+        },
+        {
+            location: "Catedral de Murcia",
+            context: "Mirando la fachada de la Catedral, vemos muchos detalles esculpidos. Alguien ha contado algunos.",
+            type: "place_value",
+            question: "En el número 48.729, ¿cuántas decenas completas (exactas) hay en total en todo el número?",
+            correctAnswer: "4872",
+            options: ["2", "72", "4872", "487"]
+        },
+        {
+            location: "Mar Menor",
+            context: "Vamos a la playa en La Manga. Nos dicen cuánta gente hay bañándose aproximadamente.",
+            type: "rounding",
+            question: "Aproxima a la unidad de millar el número de bañistas: 3.842",
+            correctAnswer: "4000",
+            options: ["3000", "3800", "4000", "3900"]
+        },
+        {
+            location: "Teatro Romano de Cartagena",
+            context: "Visitando el espectacular Teatro Romano, encontramos inscripciones antiguas.",
+            type: "roman_numerals",
+            question: "¿Qué año representa el número romano MDCLXVI?",
+            correctAnswer: "1666",
+            options: ["1566", "1666", "1766", "1656"]
+        },
+        {
+            location: "Calles de Caravaca",
+            context: "Paseando por Caravaca de la Cruz en las fiestas de los Caballos del Vino, nos fijamos en las calles.",
+            type: "lines_relation",
+            question: "Si dos calles se cruzan formando cuatro ángulos iguales (de 90 grados), decimos que son líneas...",
+            correctAnswer: "Perpendiculares",
+            options: ["Paralelas", "Secantes no perpendiculares", "Perpendiculares", "Oblicuas"]
+        },
+        {
+            location: "Vía Verde del Noroeste",
+            context: "Vamos en bici por la antigua vía del tren. Piensa en la forma del camino.",
+            type: "geometry_concepts",
+            question: "Un trozo de vía de tren que tiene un punto de principio y un punto de final se llama...",
+            correctAnswer: "Segmento",
+            options: ["Recta", "Semirrecta", "Segmento", "Curva"]
+        },
+        {
+            location: "Bando de la Huerta",
+            context: "Han repartido pasteles de carne durante el Bando. Observa la gráfica de los que se comieron por la tarde.",
+            type: "chart",
+            question: "¿A qué hora se comieron exactamente 40 pasteles?",
+            chartData: [
+                { label: "16:00", value: 20 },
+                { label: "17:00", value: 40 },
+                { label: "18:00", value: 60 },
+                { label: "19:00", value: 30 }
+            ],
+            correctAnswer: "17:00",
+            options: ["16:00", "17:00", "18:00", "19:00"]
+        },
+        {
+            location: "Salto del Usero (Bullas)",
+            context: "Para construir un puente sobre la poza, los ingenieros necesitan encontrar el centro exacto del puente.",
+            type: "drawing_mediatriz",
+            question: "Toca el lugar aproximado por donde pasaría la mediatriz de este segmento rojo (la línea que lo corta justo por la mitad y es perpendicular).",
+            // La validación de esta será visual/interactiva en el canvas
+        }
+    ];
+
+    // Variables de estado del juego
+    let currentLevelIndex = 0;
+    let score = 0;
+    let isAnswered = false;
+
+    // DOM Elements
+    const screens = {
+        start: document.getElementById('start-screen'),
+        game: document.getElementById('game-screen'),
+        end: document.getElementById('end-screen')
+    };
+    const ui = {
+        levelIndicator: document.getElementById('level-indicator'),
+        scoreIndicator: document.getElementById('score-indicator'),
+        context: document.getElementById('level-context'),
+        question: document.getElementById('question-text'),
+        interactiveArea: document.getElementById('interactive-area'),
+        feedback: document.getElementById('feedback-area'),
+        nextBtn: document.getElementById('next-btn'),
+        finalScore: document.getElementById('final-score')
+    };
+
+    function showScreen(screenName) {
+        Object.values(screens).forEach(s => s.classList.remove('active'));
+        screens[screenName].classList.add('active');
+    }
+
+    function startGame() {
+        currentLevelIndex = 0;
+        score = 0;
+        updateScore();
+        showScreen('game');
+        loadLevel();
+    }
+
+    function resetGame() {
+        startGame();
+    }
+
+    function updateScore() {
+        ui.scoreIndicator.innerText = `Puntos: ${score}`;
+    }
+
+    function loadLevel() {
+        if (currentLevelIndex >= levels.length) {
+            endGame();
+            return;
+        }
+
+        const level = levels[currentLevelIndex];
+        isAnswered = false;
+        
+        // Reset UI
+        ui.levelIndicator.innerText = `Lugar: ${level.location}`;
+        ui.context.innerText = level.context;
+        ui.question.innerText = level.question;
+        ui.feedback.innerHTML = '';
+        ui.nextBtn.classList.add('hidden');
+        ui.interactiveArea.innerHTML = '';
+
+        // Render based on type
+        switch (level.type) {
+            case 'chart':
+                renderChartOptions(level);
+                break;
+            case 'drawing_mediatriz':
+                renderMediatrizCanvas(level);
+                break;
+            default: // Multiple choice text
+                renderMultipleChoice(level);
+        }
+    }
+
+    function nextQuestion() {
+        currentLevelIndex++;
+        loadLevel();
+    }
+
+    function endGame() {
+        ui.finalScore.innerText = score;
+        showScreen('end');
+    }
+
+    function renderMultipleChoice(level) {
+        const grid = document.createElement('div');
+        grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-md';
+        
+        // Desordenar opciones
+        const shuffledOptions = [...level.options].sort(() => Math.random() - 0.5);
+
+        shuffledOptions.forEach(option => {
+            const btn = document.createElement('button');
+            btn.className = 'btn bg-slate-100 hover:bg-slate-200 text-slate-800 font-semibold py-4 px-6 rounded-xl border-2 border-slate-300 text-lg w-full transition-colors';
+            btn.innerText = option;
+            btn.onclick = () => checkAnswer(option, btn, level.correctAnswer);
+            grid.appendChild(btn);
+        });
+        ui.interactiveArea.appendChild(grid);
+    }
+
+    function renderChartOptions(level) {
+        // Crear Gráfica
+        const chartCont = document.createElement('div');
+        chartCont.className = 'chart-container w-full max-w-md';
+        
+        let maxVal = Math.max(...level.chartData.map(d => d.value));
+        
+        level.chartData.forEach(data => {
+            const group = document.createElement('div');
+            group.className = 'bar-group';
+            
+            const valLabel = document.createElement('span');
+            valLabel.className = 'bar-value';
+            valLabel.innerText = data.value;
+            
+            const bar = document.createElement('div');
+            bar.className = 'bar';
+            let heightPercent = (data.value / maxVal) * 100;
+            // Animación simple de entrada
+            setTimeout(() => { bar.style.height = `${heightPercent}%`; }, 100);
+            
+            const lbl = document.createElement('span');
+            lbl.className = 'bar-label';
+            lbl.innerText = data.label;
+            
+            group.appendChild(valLabel);
+            group.appendChild(bar);
+            group.appendChild(lbl);
+            chartCont.appendChild(group);
+        });
+
+        ui.interactiveArea.appendChild(chartCont);
+        
+        // Crear botones debajo (usando la misma función base)
+        const btnWrapper = document.createElement('div');
+        btnWrapper.className = 'w-full flex justify-center mt-4';
+        ui.interactiveArea.appendChild(btnWrapper);
+        
+        // Hack temporal: guardar el contenedor original y restaurarlo después de renderizar botones
+        const originalContainer = ui.interactiveArea;
+        ui.interactiveArea = btnWrapper;
+        renderMultipleChoice(level);
+        ui.interactiveArea = originalContainer;
+    }
+
+    function renderMediatrizCanvas(level) {
+        const canvas = document.createElement('canvas');
+        canvas.width = 300;
+        canvas.height = 200;
+        canvas.className = 'mx-auto block touch-none'; // touch-none evita scroll al tocar
+        const ctx = canvas.getContext('2d');
+        
+        // Dibujar segmento horizontal en el centro
+        const startX = 50;
+        const endX = 250;
+        const y = 100;
+        
+        function drawSegment() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            ctx.beginPath();
+            ctx.moveTo(startX, y);
+            ctx.lineTo(endX, y);
+            ctx.strokeStyle = '#ef4444'; // red-500
+            ctx.lineWidth = 4;
+            ctx.stroke();
+            
+            // Puntos de inicio y fin
+            ctx.beginPath();
+            ctx.arc(startX, y, 6, 0, Math.PI * 2);
+            ctx.arc(endX, y, 6, 0, Math.PI * 2);
+            ctx.fillStyle = '#ef4444';
+            ctx.fill();
+        }
+        
+        drawSegment();
+
+        // Lógica de interacción
+        let hasClicked = false;
+        const midPointX = (startX + endX) / 2;
+        const tolerance = 20; // Pixeles de margen de error
+
+        const handleClick = (e) => {
+            if (isAnswered || hasClicked) return;
+            hasClicked = true;
+
+            const rect = canvas.getBoundingClientRect();
+            // Soporte para touch y mouse
+            const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+            const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+            
+            const clickX = clientX - rect.left;
+            // const clickY = clientY - rect.top;
+
+            // Dibujar la línea del usuario
+            ctx.beginPath();
+            ctx.moveTo(clickX, y - 50);
+            ctx.lineTo(clickX, y + 50);
+            ctx.strokeStyle = '#3b82f6'; // blue-500
+            ctx.lineWidth = 3;
+            ctx.setLineDash([5, 5]);
+            ctx.stroke();
+            ctx.setLineDash([]); // Reset
+
+            // Comprobar si está cerca del medio
+            const isCorrect = Math.abs(clickX - midPointX) <= tolerance;
+            
+            // Dibujar la mediatriz real si falló
+            if (!isCorrect) {
+                ctx.beginPath();
+                ctx.moveTo(midPointX, y - 60);
+                ctx.lineTo(midPointX, y + 60);
+                ctx.strokeStyle = '#10b981'; // emerald-500
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                ctx.fillStyle = '#10b981';
+                ctx.font = "14px Arial";
+                ctx.fillText("Centro exacto", midPointX + 5, y - 65);
+            }
+
+            // Fake button para usar el flujo normal de respuesta
+            const dummyBtn = document.createElement('button');
+            if (isCorrect) {
+                dummyBtn.classList.add('bg-green-500'); // Solo para engañar a checkAnswer
+                checkAnswer('correct', dummyBtn, 'correct', "¡Muy bien! Has trazado la mediatriz aproximada.");
+            } else {
+                checkAnswer('incorrect', dummyBtn, 'correct', "Casi. La línea verde muestra la mediatriz real, que corta por la mitad.");
+            }
+        };
+
+        canvas.addEventListener('mousedown', handleClick);
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleClick(e); }, {passive: false});
+        
+        ui.interactiveArea.appendChild(canvas);
+        
+        const inst = document.createElement('p');
+        inst.className = 'text-sm text-slate-500 mt-2 text-center w-full';
+        inst.innerText = 'Toca dentro del recuadro punteado.';
+        ui.interactiveArea.appendChild(inst);
+    }
+
+    function checkAnswer(selectedOption, buttonElement, correctAnswer, customMessage = null) {
+        if (isAnswered) return;
+        isAnswered = true;
+
+        const isCorrect = selectedOption === correctAnswer;
+        
+        // Deshabilitar todos los botones si existen (caso test)
+        const buttons = ui.interactiveArea.querySelectorAll('button');
+        buttons.forEach(btn => {
+            btn.disabled = true;
+            btn.classList.add('opacity-70', 'cursor-not-allowed');
+            // Marcar visualmente la correcta e incorrecta
+            if (btn.innerText === correctAnswer) {
+                btn.classList.remove('bg-slate-100', 'border-slate-300', 'opacity-70');
+                btn.classList.add('bg-green-100', 'border-green-500', 'text-green-800');
+            } else if (btn === buttonElement && !isCorrect) {
+                btn.classList.remove('bg-slate-100', 'border-slate-300');
+                btn.classList.add('bg-red-100', 'border-red-500', 'text-red-800');
+            }
+        });
+
+        if (isCorrect) {
+            score += 10;
+            updateScore();
+            ui.feedback.innerHTML = `<span class="feedback-correct text-2xl flex items-center gap-2">✅ ${customMessage || '¡Correcto! ¡Acho, qué fiera!'}</span>`;
+        } else {
+            ui.feedback.innerHTML = `<span class="feedback-incorrect text-xl flex items-center gap-2">❌ ${customMessage || 'Vaya... La respuesta correcta era: ' + correctAnswer}</span>`;
+        }
+
+        ui.nextBtn.classList.remove('hidden');
+    }
+
+    // Inicializar la primera pantalla
+    showScreen('start');
+
+</script>
+</body>
+</html>
